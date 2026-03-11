@@ -1,8 +1,8 @@
 // 消消乐游戏 - HTML5 Canvas 版本 (优化形状区分)
 
 const GRID_SIZE = 8;
-const COLORS = ['#FF6B6B', '#4ECDC4', '#45B7D1', '#FFA07A', '#98D8C8', '#F7DC6F'];
-const SHAPES = ['circle', 'square', 'triangle', 'circle', 'square', 'triangle']; // 只用3种形状循环
+const COLORS = ['#FF6B6B', '#FFA07A', '#F7DC6F', '#98D8C8', '#45B7D1', '#9B59B6'];
+const SHAPES = ['heart', 'hexagon', 'triangle', 'square', 'pentagon', 'circle']; // 6种形状
 const MAX_MOVES = 30;
 
 class MatchThree {
@@ -287,33 +287,62 @@ class MatchThree {
         this.ctx.beginPath();
         
         switch(shape) {
-            case 'circle':
-                // 圆形
-                this.ctx.arc(0, 0, size, 0, Math.PI * 2);
+            case 'heart':
+                // 心形
+                const topCurveHeight = size * 0.3;
+                this.ctx.moveTo(0, size * 0.3);
+                
+                // 左半心
+                this.ctx.bezierCurveTo(
+                    -size, -size * 0.5,
+                    -size * 1.2, size * 0.3,
+                    0, size * 1.2
+                );
+                
+                // 右半心
+                this.ctx.bezierCurveTo(
+                    size * 1.2, size * 0.3,
+                    size, -size * 0.5,
+                    0, size * 0.3
+                );
+                
                 this.ctx.fill();
                 
-                // 高光（左上角）
+                // 高光（左上部）
                 this.ctx.fillStyle = 'rgba(255, 255, 255, 0.4)';
                 this.ctx.beginPath();
-                this.ctx.arc(-size * 0.35, -size * 0.35, size * 0.35, 0, Math.PI * 2);
+                this.ctx.arc(-size * 0.4, -size * 0.1, size * 0.3, 0, Math.PI * 2);
                 this.ctx.fill();
                 break;
                 
-            case 'square':
-                // 正方形
-                this.ctx.rect(-size, -size, size * 2, size * 2);
+            case 'hexagon':
+                // 正六边形
+                for (let i = 0; i < 6; i++) {
+                    const angle = (Math.PI / 3) * i;
+                    const px = Math.cos(angle) * size;
+                    const py = Math.sin(angle) * size;
+                    if (i === 0) {
+                        this.ctx.moveTo(px, py);
+                    } else {
+                        this.ctx.lineTo(px, py);
+                    }
+                }
+                this.ctx.closePath();
                 this.ctx.fill();
                 
-                // 高光（左上角到中间渐变）
-                const squareGradient = this.ctx.createLinearGradient(-size, -size, 0, 0);
-                squareGradient.addColorStop(0, 'rgba(255, 255, 255, 0.5)');
-                squareGradient.addColorStop(1, 'rgba(255, 255, 255, 0)');
-                this.ctx.fillStyle = squareGradient;
-                this.ctx.fillRect(-size, -size, size, size);
+                // 高光（左上边缘）
+                this.ctx.fillStyle = 'rgba(255, 255, 255, 0.35)';
+                this.ctx.beginPath();
+                this.ctx.moveTo(-size * 0.5, -size * 0.866);
+                this.ctx.lineTo(0, -size);
+                this.ctx.lineTo(size * 0.3, -size * 0.7);
+                this.ctx.lineTo(-size * 0.2, -size * 0.5);
+                this.ctx.closePath();
+                this.ctx.fill();
                 break;
                 
             case 'triangle':
-                // 三角形
+                // 正三角形（尖朝上）
                 this.ctx.moveTo(0, -size * 1.1);
                 this.ctx.lineTo(size * 1.1, size * 0.8);
                 this.ctx.lineTo(-size * 1.1, size * 0.8);
@@ -323,7 +352,54 @@ class MatchThree {
                 // 高光（顶部中心）
                 this.ctx.fillStyle = 'rgba(255, 255, 255, 0.4)';
                 this.ctx.beginPath();
-                this.ctx.arc(0, -size * 0.6, size * 0.3, 0, Math.PI * 2);
+                this.ctx.arc(0, -size * 0.5, size * 0.3, 0, Math.PI * 2);
+                this.ctx.fill();
+                break;
+                
+            case 'square':
+                // 正方形
+                this.ctx.rect(-size, -size, size * 2, size * 2);
+                this.ctx.fill();
+                
+                // 高光（左上到中心渐变）
+                const squareGradient = this.ctx.createLinearGradient(-size, -size, 0, 0);
+                squareGradient.addColorStop(0, 'rgba(255, 255, 255, 0.5)');
+                squareGradient.addColorStop(1, 'rgba(255, 255, 255, 0)');
+                this.ctx.fillStyle = squareGradient;
+                this.ctx.fillRect(-size, -size, size, size);
+                break;
+                
+            case 'pentagon':
+                // 正五边形（一个顶点朝上）
+                for (let i = 0; i < 5; i++) {
+                    const angle = (Math.PI * 2 / 5) * i - Math.PI / 2;
+                    const px = Math.cos(angle) * size;
+                    const py = Math.sin(angle) * size;
+                    if (i === 0) {
+                        this.ctx.moveTo(px, py);
+                    } else {
+                        this.ctx.lineTo(px, py);
+                    }
+                }
+                this.ctx.closePath();
+                this.ctx.fill();
+                
+                // 高光（顶部）
+                this.ctx.fillStyle = 'rgba(255, 255, 255, 0.35)';
+                this.ctx.beginPath();
+                this.ctx.arc(0, -size * 0.5, size * 0.35, 0, Math.PI * 2);
+                this.ctx.fill();
+                break;
+                
+            case 'circle':
+                // 圆形
+                this.ctx.arc(0, 0, size, 0, Math.PI * 2);
+                this.ctx.fill();
+                
+                // 高光（左上角）
+                this.ctx.fillStyle = 'rgba(255, 255, 255, 0.4)';
+                this.ctx.beginPath();
+                this.ctx.arc(-size * 0.35, -size * 0.35, size * 0.35, 0, Math.PI * 2);
                 this.ctx.fill();
                 break;
         }
