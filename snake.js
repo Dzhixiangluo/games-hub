@@ -32,7 +32,7 @@ let score = 0;
 let highScore = parseInt(localStorage.getItem('snakeHighScore') || '0');
 let gameOver = false;
 let paused = false;
-let gameSpeed = 150;
+let gameSpeed = 195; // 降低30%速度（原150ms → 195ms）
 let lastUpdateTime = 0;
 
 // 初始化

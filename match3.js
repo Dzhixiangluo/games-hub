@@ -2,7 +2,7 @@
 
 const GRID_SIZE = 8;
 const COLORS = ['#FF6B6B', '#4ECDC4', '#45B7D1', '#FFA07A', '#98D8C8', '#F7DC6F'];
-const SHAPES = ['circle', 'square', 'triangle', 'diamond', 'star', 'hexagon']; // 6种形状
+const SHAPES = ['circle', 'square', 'triangle', 'circle', 'square', 'triangle']; // 只用3种形状循环
 const MAX_MOVES = 30;
 
 class MatchThree {
@@ -256,7 +256,7 @@ class MatchThree {
                                           this.cellSize - margin * 2);
                     }
                     
-                    // 绘制形状（不同颜色对应不同形状）
+                    // 绘制形状
                     const centerX = px + this.cellSize / 2;
                     const centerY = py + this.cellSize / 2;
                     const size = (this.cellSize - margin * 2) * 0.35;
@@ -288,65 +288,45 @@ class MatchThree {
         
         switch(shape) {
             case 'circle':
+                // 圆形
                 this.ctx.arc(0, 0, size, 0, Math.PI * 2);
+                this.ctx.fill();
+                
+                // 高光（左上角）
+                this.ctx.fillStyle = 'rgba(255, 255, 255, 0.4)';
+                this.ctx.beginPath();
+                this.ctx.arc(-size * 0.35, -size * 0.35, size * 0.35, 0, Math.PI * 2);
+                this.ctx.fill();
                 break;
                 
             case 'square':
+                // 正方形
                 this.ctx.rect(-size, -size, size * 2, size * 2);
+                this.ctx.fill();
+                
+                // 高光（左上角到中间渐变）
+                const squareGradient = this.ctx.createLinearGradient(-size, -size, 0, 0);
+                squareGradient.addColorStop(0, 'rgba(255, 255, 255, 0.5)');
+                squareGradient.addColorStop(1, 'rgba(255, 255, 255, 0)');
+                this.ctx.fillStyle = squareGradient;
+                this.ctx.fillRect(-size, -size, size, size);
                 break;
                 
             case 'triangle':
-                this.ctx.moveTo(0, -size);
-                this.ctx.lineTo(size, size);
-                this.ctx.lineTo(-size, size);
+                // 三角形
+                this.ctx.moveTo(0, -size * 1.1);
+                this.ctx.lineTo(size * 1.1, size * 0.8);
+                this.ctx.lineTo(-size * 1.1, size * 0.8);
                 this.ctx.closePath();
-                break;
+                this.ctx.fill();
                 
-            case 'diamond':
-                this.ctx.moveTo(0, -size);
-                this.ctx.lineTo(size, 0);
-                this.ctx.lineTo(0, size);
-                this.ctx.lineTo(-size, 0);
-                this.ctx.closePath();
-                break;
-                
-            case 'star':
-                for (let i = 0; i < 5; i++) {
-                    const angle = (i * 4 * Math.PI) / 5 - Math.PI / 2;
-                    const r = i % 2 === 0 ? size : size * 0.4;
-                    const px = Math.cos(angle) * r;
-                    const py = Math.sin(angle) * r;
-                    if (i === 0) {
-                        this.ctx.moveTo(px, py);
-                    } else {
-                        this.ctx.lineTo(px, py);
-                    }
-                }
-                this.ctx.closePath();
-                break;
-                
-            case 'hexagon':
-                for (let i = 0; i < 6; i++) {
-                    const angle = (i * Math.PI) / 3;
-                    const px = Math.cos(angle) * size;
-                    const py = Math.sin(angle) * size;
-                    if (i === 0) {
-                        this.ctx.moveTo(px, py);
-                    } else {
-                        this.ctx.lineTo(px, py);
-                    }
-                }
-                this.ctx.closePath();
+                // 高光（顶部中心）
+                this.ctx.fillStyle = 'rgba(255, 255, 255, 0.4)';
+                this.ctx.beginPath();
+                this.ctx.arc(0, -size * 0.6, size * 0.3, 0, Math.PI * 2);
+                this.ctx.fill();
                 break;
         }
-        
-        this.ctx.fill();
-        
-        // 高光效果
-        this.ctx.fillStyle = 'rgba(255, 255, 255, 0.3)';
-        this.ctx.beginPath();
-        this.ctx.arc(-size * 0.3, -size * 0.3, size * 0.4, 0, Math.PI * 2);
-        this.ctx.fill();
         
         this.ctx.restore();
     }
