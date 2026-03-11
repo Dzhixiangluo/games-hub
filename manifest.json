@@ -1,0 +1,22 @@
+{
+  "name": "游戏大厅 - 经典小游戏合集",
+  "short_name": "游戏大厅",
+  "description": "5款经典小游戏：贪吃蛇、俄罗斯方块、消消乐、扫雷、五子棋",
+  "start_url": "index.html",
+  "display": "standalone",
+  "background_color": "#1a1a2e",
+  "theme_color": "#667eea",
+  "orientation": "portrait",
+  "icons": [
+    {
+      "src": "icon-192.png",
+      "sizes": "192x192",
+      "type": "image/png"
+    },
+    {
+      "src": "icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png"
+    }
+  ]
+}

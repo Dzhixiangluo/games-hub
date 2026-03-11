@@ -1,0 +1,170 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+    <meta name="theme-color" content="#1a1a2e">
+    <title>消消乐</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            -webkit-tap-highlight-color: transparent;
+        }
+        
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Arial, sans-serif;
+            background: linear-gradient(135deg, #FF9800 0%, #FF5722 100%);
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            padding: 20px;
+        }
+        
+        .container {
+            background: white;
+            border-radius: 20px;
+            padding: 30px;
+            box-shadow: 0 20px 60px rgba(0,0,0,0.3);
+            max-width: 500px;
+            width: 100%;
+        }
+        
+        h1 {
+            text-align: center;
+            color: #FF9800;
+            margin-bottom: 20px;
+        }
+        
+        .game-wrapper {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 20px;
+        }
+        
+        #gameCanvas {
+            border: 3px solid #FF9800;
+            border-radius: 10px;
+            display: block;
+            cursor: pointer;
+        }
+        
+        .info-panel {
+            width: 100%;
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 15px;
+            text-align: center;
+        }
+        
+        .info-item {
+            background: #f5f5f5;
+            padding: 15px;
+            border-radius: 10px;
+        }
+        
+        .info-label {
+            font-size: 14px;
+            color: #666;
+            margin-bottom: 5px;
+        }
+        
+        .info-value {
+            font-size: 24px;
+            font-weight: bold;
+            color: #FF9800;
+        }
+        
+        .controls {
+            width: 100%;
+            margin-top: 10px;
+        }
+        
+        .btn {
+            width: 100%;
+            padding: 15px;
+            border: none;
+            border-radius: 10px;
+            font-size: 18px;
+            font-weight: bold;
+            cursor: pointer;
+            transition: all 0.3s;
+            background: #4CAF50;
+            color: white;
+        }
+        
+        .btn:active {
+            transform: scale(0.95);
+        }
+        
+        .back-link {
+            display: inline-block;
+            margin-top: 20px;
+            padding: 10px 20px;
+            background: #666;
+            color: white;
+            text-decoration: none;
+            border-radius: 10px;
+            transition: all 0.3s;
+        }
+        
+        .back-link:hover {
+            background: #555;
+        }
+        
+        @media (max-width: 600px) {
+            .container {
+                padding: 20px;
+            }
+            
+            #gameCanvas {
+                width: 100%;
+                height: auto;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>💎 消消乐</h1>
+        
+        <div class="game-wrapper">
+            <canvas id="gameCanvas"></canvas>
+            
+            <div class="info-panel">
+                <div class="info-item">
+                    <div class="info-label">得分</div>
+                    <div class="info-value" id="score">0</div>
+                </div>
+                <div class="info-item">
+                    <div class="info-label">剩余步数</div>
+                    <div class="info-value" id="moves">30</div>
+                </div>
+            </div>
+            
+            <div class="controls">
+                <button id="btnRestart" class="btn">🔄 重新开始</button>
+            </div>
+        </div>
+        
+        <div style="text-align: center;">
+            <a href="index.html" class="back-link">⬅️ 返回游戏大厅</a>
+        </div>
+        
+        <div style="margin-top: 20px; padding: 15px; background: #f5f5f5; border-radius: 10px; font-size: 14px; color: #666;">
+            <strong>操作说明：</strong><br>
+            • 点击或触摸选择宝石<br>
+            • 再次点击相邻宝石进行交换<br>
+            • 三个或更多相同颜色的宝石连成一线即可消除<br>
+            • 在步数用完前获得最高分！<br>
+            • 按空格键可快速重新开始
+        </div>
+    </div>
+    
+    <script src="match3.js"></script>
+</body>
+</html>
