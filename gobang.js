@@ -53,8 +53,13 @@ class Gobang {
         const scaleX = this.canvas.width / rect.width;
         const scaleY = this.canvas.height / rect.height;
         
-        const x = Math.round((e.clientX - rect.left) * scaleX / this.cellSize);
-        const y = Math.round((e.clientY - rect.top) * scaleY / this.cellSize);
+        // 修正：计算棋盘交叉点坐标，而不是格子坐标
+        const clickX = (e.clientX - rect.left) * scaleX;
+        const clickY = (e.clientY - rect.top) * scaleY;
+        
+        // 找到最近的交叉点
+        const x = Math.round(clickX / this.cellSize - 0.5);
+        const y = Math.round(clickY / this.cellSize - 0.5);
         
         this.makeMove(x, y);
     }
@@ -67,8 +72,13 @@ class Gobang {
         const scaleX = this.canvas.width / rect.width;
         const scaleY = this.canvas.height / rect.height;
         
-        const x = Math.round((touch.clientX - rect.left) * scaleX / this.cellSize);
-        const y = Math.round((touch.clientY - rect.top) * scaleY / this.cellSize);
+        // 修正：计算棋盘交叉点坐标
+        const clickX = (touch.clientX - rect.left) * scaleX;
+        const clickY = (touch.clientY - rect.top) * scaleY;
+        
+        // 找到最近的交叉点
+        const x = Math.round(clickX / this.cellSize - 0.5);
+        const y = Math.round(clickY / this.cellSize - 0.5);
         
         this.makeMove(x, y);
     }

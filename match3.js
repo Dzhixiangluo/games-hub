@@ -1,7 +1,8 @@
-// 消消乐游戏 - HTML5 Canvas 版本 (修复移动端)
+// 消消乐游戏 - HTML5 Canvas 版本 (优化形状区分)
 
 const GRID_SIZE = 8;
 const COLORS = ['#FF6B6B', '#4ECDC4', '#45B7D1', '#FFA07A', '#98D8C8', '#F7DC6F'];
+const SHAPES = ['circle', 'square', 'triangle', 'diamond', 'star', 'hexagon']; // 6种形状
 const MAX_MOVES = 30;
 
 class MatchThree {
@@ -79,59 +80,43 @@ class MatchThree {
         this.handleCellClick(x, y);
     }
     
-    initGrid() {
-        // 生成初始网格
-        for (let y = 0; y < GRID_SIZE; y++) {
-            this.grid[y] = [];
-            for (let x = 0; x < GRID_SIZE; x++) {
-                this.grid[y][x] = this.getRandomColor();
-            }
-        }
-        
-        // 确保初始没有匹配
-        while (this.findMatches().length > 0) {
-            for (let y = 0; y < GRID_SIZE; y++) {
-                for (let x = 0; x < GRID_SIZE; x++) {
-                    this.grid[y][x] = this.getRandomColor();
-                }
-            }
-        }
-        
-        this.updateScore();
-    }
-    
-    getRandomColor() {
-        return COLORS[Math.floor(Math.random() * COLORS.length)];
-    }
-    
     handleCellClick(x, y) {
         if (x < 0 || x >= GRID_SIZE || y < 0 || y >= GRID_SIZE) return;
         
         if (!this.selectedCell) {
-            // 第一次选择
             this.selectedCell = {x, y};
             this.draw();
         } else {
-            // 第二次选择
-            const dx = Math.abs(x - this.selectedCell.x);
-            const dy = Math.abs(y - this.selectedCell.y);
+            const dx = Math.abs(this.selectedCell.x - x);
+            const dy = Math.abs(this.selectedCell.y - y);
             
-            if (x === this.selectedCell.x && y === this.selectedCell.y) {
-                // 点击同一个格子，取消选择
-                this.selectedCell = null;
-                this.draw();
-            } else if ((dx === 1 && dy === 0) || (dx === 0 && dy === 1)) {
-                // 相邻格子，交换
-                this.swapCells(this.selectedCell.x, this.selectedCell.y, x, y);
-            } else {
-                // 不相邻，重新选择
-                this.selectedCell = {x, y};
-                this.draw();
+            if ((dx === 1 && dy === 0) || (dx === 0 && dy === 1)) {
+                this.swap(this.selectedCell.x, this.selectedCell.y, x, y);
+            }
+            
+            this.selectedCell = null;
+            this.draw();
+        }
+    }
+    
+    initGrid() {
+        for (let y = 0; y < GRID_SIZE; y++) {
+            this.grid[y] = [];
+            for (let x = 0; x < GRID_SIZE; x++) {
+                this.grid[y][x] = Math.floor(Math.random() * COLORS.length);
+            }
+        }
+        
+        while (this.findMatches().length > 0) {
+            for (let y = 0; y < GRID_SIZE; y++) {
+                for (let x = 0; x < GRID_SIZE; x++) {
+                    this.grid[y][x] = Math.floor(Math.random() * COLORS.length);
+                }
             }
         }
     }
     
-    swapCells(x1, y1, x2, y2) {
+    swap(x1, y1, x2, y2) {
         const temp = this.grid[y1][x1];
         this.grid[y1][x1] = this.grid[y2][x2];
         this.grid[y2][x2] = temp;
@@ -139,15 +124,16 @@ class MatchThree {
         const matches = this.findMatches();
         
         if (matches.length > 0) {
-            // 有效交换
             this.moves--;
-            this.selectedCell = null;
+            this.updateScore();
             this.processMatches();
         } else {
-            // 无效交换，换回来
             this.grid[y2][x2] = this.grid[y1][x1];
             this.grid[y1][x1] = temp;
-            this.selectedCell = null;
+        }
+        
+        if (this.moves <= 0) {
+            this.gameOver = true;
         }
         
         this.draw();
@@ -156,156 +142,131 @@ class MatchThree {
     findMatches() {
         const matches = [];
         
-        // 横向匹配
         for (let y = 0; y < GRID_SIZE; y++) {
-            for (let x = 0; x < GRID_SIZE - 2; x++) {
+            for (let x = 0; x < GRID_SIZE; x++) {
                 const color = this.grid[y][x];
-                if (color && this.grid[y][x + 1] === color && this.grid[y][x + 2] === color) {
-                    for (let i = 0; i < 3; i++) {
-                        if (!matches.some(m => m.x === x + i && m.y === y)) {
-                            matches.push({x: x + i, y: y});
-                        }
+                
+                let hCount = 1;
+                while (x + hCount < GRID_SIZE && this.grid[y][x + hCount] === color) {
+                    hCount++;
+                }
+                
+                if (hCount >= 3) {
+                    for (let i = 0; i < hCount; i++) {
+                        matches.push({x: x + i, y});
+                    }
+                }
+                
+                let vCount = 1;
+                while (y + vCount < GRID_SIZE && this.grid[y + vCount][x] === color) {
+                    vCount++;
+                }
+                
+                if (vCount >= 3) {
+                    for (let i = 0; i < vCount; i++) {
+                        matches.push({x, y: y + i});
                     }
                 }
             }
         }
         
-        // 纵向匹配
-        for (let x = 0; x < GRID_SIZE; x++) {
-            for (let y = 0; y < GRID_SIZE - 2; y++) {
-                const color = this.grid[y][x];
-                if (color && this.grid[y + 1][x] === color && this.grid[y + 2][x] === color) {
-                    for (let i = 0; i < 3; i++) {
-                        if (!matches.some(m => m.x === x && m.y === y + i)) {
-                            matches.push({x: x, y: y + i});
-                        }
-                    }
-                }
+        const unique = [];
+        matches.forEach(match => {
+            if (!unique.find(m => m.x === match.x && m.y === match.y)) {
+                unique.push(match);
             }
-        }
+        });
         
-        return matches;
+        return unique;
     }
     
-    async processMatches() {
+    processMatches() {
         this.animating = true;
         
-        while (true) {
+        setTimeout(() => {
             const matches = this.findMatches();
-            if (matches.length === 0) break;
             
-            // 清除匹配
-            matches.forEach(m => {
-                this.grid[m.y][m.x] = null;
-                this.score += 10;
-            });
-            
-            this.updateScore();
-            this.draw();
-            await this.sleep(200);
-            
-            // 下落
-            for (let x = 0; x < GRID_SIZE; x++) {
-                let emptySpaces = 0;
-                for (let y = GRID_SIZE - 1; y >= 0; y--) {
-                    if (this.grid[y][x] === null) {
-                        emptySpaces++;
-                    } else if (emptySpaces > 0) {
-                        this.grid[y + emptySpaces][x] = this.grid[y][x];
-                        this.grid[y][x] = null;
-                    }
-                }
+            if (matches.length > 0) {
+                this.score += matches.length * 10;
+                this.updateScore();
+                
+                matches.forEach(match => {
+                    this.grid[match.y][match.x] = -1;
+                });
+                
+                this.draw();
+                
+                setTimeout(() => {
+                    this.dropGems();
+                    this.draw();
+                    
+                    setTimeout(() => {
+                        this.processMatches();
+                    }, 300);
+                }, 200);
+            } else {
+                this.animating = false;
+                this.draw();
             }
-            
-            // 填充新宝石
-            for (let x = 0; x < GRID_SIZE; x++) {
-                for (let y = 0; y < GRID_SIZE; y++) {
-                    if (this.grid[y][x] === null) {
-                        this.grid[y][x] = this.getRandomColor();
-                    }
-                }
-            }
-            
-            this.draw();
-            await this.sleep(300);
-        }
-        
-        this.animating = false;
-        
-        // 检查游戏结束
-        if (this.moves <= 0) {
-            this.gameOver = true;
-            this.draw();
-        }
+        }, 100);
     }
     
-    sleep(ms) {
-        return new Promise(resolve => setTimeout(resolve, ms));
+    dropGems() {
+        for (let x = 0; x < GRID_SIZE; x++) {
+            let emptySpaces = 0;
+            
+            for (let y = GRID_SIZE - 1; y >= 0; y--) {
+                if (this.grid[y][x] === -1) {
+                    emptySpaces++;
+                } else if (emptySpaces > 0) {
+                    this.grid[y + emptySpaces][x] = this.grid[y][x];
+                    this.grid[y][x] = -1;
+                }
+            }
+            
+            for (let y = 0; y < emptySpaces; y++) {
+                this.grid[y][x] = Math.floor(Math.random() * COLORS.length);
+            }
+        }
     }
     
     draw() {
-        // 清空画布
-        this.ctx.fillStyle = '#1a1a2e';
+        this.ctx.fillStyle = '#2C3E50';
         this.ctx.fillRect(0, 0, this.canvas.width, this.canvas.height);
         
-        // 绘制网格
         for (let y = 0; y < GRID_SIZE; y++) {
             for (let x = 0; x < GRID_SIZE; x++) {
                 const color = this.grid[y][x];
-                if (!color) continue;
                 
-                const px = x * this.cellSize;
-                const py = y * this.cellSize;
-                
-                // 选中高亮
-                if (this.selectedCell && this.selectedCell.x === x && this.selectedCell.y === y) {
-                    this.ctx.fillStyle = '#ffffff';
-                    this.ctx.fillRect(px, py, this.cellSize, this.cellSize);
+                if (color >= 0) {
+                    const px = x * this.cellSize;
+                    const py = y * this.cellSize;
+                    const margin = 4;
+                    
+                    this.ctx.fillStyle = '#34495E';
+                    this.ctx.fillRect(px + margin, py + margin, 
+                                    this.cellSize - margin * 2, 
+                                    this.cellSize - margin * 2);
+                    
+                    if (this.selectedCell && this.selectedCell.x === x && this.selectedCell.y === y) {
+                        this.ctx.strokeStyle = '#FFD700';
+                        this.ctx.lineWidth = 3;
+                        this.ctx.strokeRect(px + margin, py + margin, 
+                                          this.cellSize - margin * 2, 
+                                          this.cellSize - margin * 2);
+                    }
+                    
+                    // 绘制形状（不同颜色对应不同形状）
+                    const centerX = px + this.cellSize / 2;
+                    const centerY = py + this.cellSize / 2;
+                    const size = (this.cellSize - margin * 2) * 0.35;
+                    
+                    this.ctx.fillStyle = COLORS[color];
+                    this.drawShape(centerX, centerY, size, SHAPES[color]);
                 }
-                
-                // 宝石
-                const margin = 4;
-                this.ctx.fillStyle = color;
-                this.ctx.beginPath();
-                this.ctx.arc(
-                    px + this.cellSize / 2,
-                    py + this.cellSize / 2,
-                    this.cellSize / 2 - margin,
-                    0,
-                    Math.PI * 2
-                );
-                this.ctx.fill();
-                
-                // 高光
-                this.ctx.fillStyle = 'rgba(255, 255, 255, 0.3)';
-                this.ctx.beginPath();
-                this.ctx.arc(
-                    px + this.cellSize / 2 - this.cellSize * 0.15,
-                    py + this.cellSize / 2 - this.cellSize * 0.15,
-                    this.cellSize * 0.15,
-                    0,
-                    Math.PI * 2
-                );
-                this.ctx.fill();
             }
         }
         
-        // 网格线
-        this.ctx.strokeStyle = '#2a2a3e';
-        this.ctx.lineWidth = 1;
-        for (let i = 0; i <= GRID_SIZE; i++) {
-            this.ctx.beginPath();
-            this.ctx.moveTo(i * this.cellSize, 0);
-            this.ctx.lineTo(i * this.cellSize, this.canvas.height);
-            this.ctx.stroke();
-            
-            this.ctx.beginPath();
-            this.ctx.moveTo(0, i * this.cellSize);
-            this.ctx.lineTo(this.canvas.width, i * this.cellSize);
-            this.ctx.stroke();
-        }
-        
-        // 游戏结束
         if (this.gameOver) {
             this.ctx.fillStyle = 'rgba(0, 0, 0, 0.7)';
             this.ctx.fillRect(0, 0, this.canvas.width, this.canvas.height);
@@ -315,8 +276,79 @@ class MatchThree {
             this.ctx.textAlign = 'center';
             this.ctx.fillText('游戏结束！', this.canvas.width / 2, this.canvas.height / 2 - 20);
             this.ctx.font = '18px Arial';
-            this.ctx.fillText(`最终得分: ${this.score}`, this.canvas.width / 2, this.canvas.height / 2 + 20);
+            this.ctx.fillText(`得分: ${this.score}`, this.canvas.width / 2, this.canvas.height / 2 + 20);
         }
+    }
+    
+    drawShape(x, y, size, shape) {
+        this.ctx.save();
+        this.ctx.translate(x, y);
+        
+        this.ctx.beginPath();
+        
+        switch(shape) {
+            case 'circle':
+                this.ctx.arc(0, 0, size, 0, Math.PI * 2);
+                break;
+                
+            case 'square':
+                this.ctx.rect(-size, -size, size * 2, size * 2);
+                break;
+                
+            case 'triangle':
+                this.ctx.moveTo(0, -size);
+                this.ctx.lineTo(size, size);
+                this.ctx.lineTo(-size, size);
+                this.ctx.closePath();
+                break;
+                
+            case 'diamond':
+                this.ctx.moveTo(0, -size);
+                this.ctx.lineTo(size, 0);
+                this.ctx.lineTo(0, size);
+                this.ctx.lineTo(-size, 0);
+                this.ctx.closePath();
+                break;
+                
+            case 'star':
+                for (let i = 0; i < 5; i++) {
+                    const angle = (i * 4 * Math.PI) / 5 - Math.PI / 2;
+                    const r = i % 2 === 0 ? size : size * 0.4;
+                    const px = Math.cos(angle) * r;
+                    const py = Math.sin(angle) * r;
+                    if (i === 0) {
+                        this.ctx.moveTo(px, py);
+                    } else {
+                        this.ctx.lineTo(px, py);
+                    }
+                }
+                this.ctx.closePath();
+                break;
+                
+            case 'hexagon':
+                for (let i = 0; i < 6; i++) {
+                    const angle = (i * Math.PI) / 3;
+                    const px = Math.cos(angle) * size;
+                    const py = Math.sin(angle) * size;
+                    if (i === 0) {
+                        this.ctx.moveTo(px, py);
+                    } else {
+                        this.ctx.lineTo(px, py);
+                    }
+                }
+                this.ctx.closePath();
+                break;
+        }
+        
+        this.ctx.fill();
+        
+        // 高光效果
+        this.ctx.fillStyle = 'rgba(255, 255, 255, 0.3)';
+        this.ctx.beginPath();
+        this.ctx.arc(-size * 0.3, -size * 0.3, size * 0.4, 0, Math.PI * 2);
+        this.ctx.fill();
+        
+        this.ctx.restore();
     }
     
     updateScore() {
@@ -325,16 +357,15 @@ class MatchThree {
     }
     
     restart() {
-        this.grid = [];
         this.score = 0;
         this.moves = MAX_MOVES;
         this.selectedCell = null;
         this.gameOver = false;
         this.animating = false;
         this.initGrid();
+        this.updateScore();
         this.draw();
     }
 }
 
-// 启动游戏
 new MatchThree();

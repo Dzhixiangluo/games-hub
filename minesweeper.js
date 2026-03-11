@@ -1,4 +1,4 @@
-// 扫雷游戏 - HTML5 Canvas 版本 (修复移动端)
+// 扫雷游戏 - HTML5 Canvas 版本 (优化版)
 
 const GRID_SIZE = 16;
 const MINE_COUNT = 40;
@@ -23,6 +23,7 @@ class Minesweeper {
         this.flagCount = 0;
         
         this.longPressTimer = null;
+        this.longPressTriggered = false;
         this.longPressDelay = 500;
         
         this.setupControls();
@@ -31,48 +32,82 @@ class Minesweeper {
     }
     
     setupControls() {
-        // 鼠标点击
-        this.canvas.addEventListener('click', (e) => this.handleClick(e, false));
+        // 鼠标左键 - 翻开
+        this.canvas.addEventListener('click', (e) => {
+            if (this.gameOver) return;
+            const {x, y} = this.getMouseCoords(e);
+            if (x >= 0 && x < GRID_SIZE && y >= 0 && y < GRID_SIZE) {
+                this.revealCell(x, y);
+            }
+        });
+        
+        // 鼠标右键 - 标记
         this.canvas.addEventListener('contextmenu', (e) => {
             e.preventDefault();
-            this.handleClick(e, true);
+            if (this.gameOver) return;
+            const {x, y} = this.getMouseCoords(e);
+            if (x >= 0 && x < GRID_SIZE && y >= 0 && y < GRID_SIZE) {
+                this.toggleFlag(x, y);
+            }
         });
         
         // 触摸事件
+        let touchStartX, touchStartY;
+        
         this.canvas.addEventListener('touchstart', (e) => {
             e.preventDefault();
+            if (this.gameOver) return;
+            
             const touch = e.touches[0];
             const {x, y} = this.getTouchCoords(touch);
+            touchStartX = x;
+            touchStartY = y;
             
-            // 长按检测
+            this.longPressTriggered = false;
+            
+            // 长按检测 - 标记
             this.longPressTimer = setTimeout(() => {
                 if (x >= 0 && x < GRID_SIZE && y >= 0 && y < GRID_SIZE) {
-                    this.handleCellAction(x, y, true);
+                    this.longPressTriggered = true;
+                    this.toggleFlag(x, y);
+                    
+                    // 震动反馈（如果支持）
+                    if (navigator.vibrate) {
+                        navigator.vibrate(50);
+                    }
                 }
-                this.longPressTimer = null;
             }, this.longPressDelay);
         });
         
         this.canvas.addEventListener('touchmove', (e) => {
             e.preventDefault();
-            // 移动时取消长按
-            if (this.longPressTimer) {
-                clearTimeout(this.longPressTimer);
-                this.longPressTimer = null;
+            // 移动超过一定距离取消长按
+            const touch = e.touches[0];
+            const {x, y} = this.getTouchCoords(touch);
+            
+            if (Math.abs(x - touchStartX) > 1 || Math.abs(y - touchStartY) > 1) {
+                if (this.longPressTimer) {
+                    clearTimeout(this.longPressTimer);
+                    this.longPressTimer = null;
+                }
             }
         });
         
         this.canvas.addEventListener('touchend', (e) => {
             e.preventDefault();
+            
+            // 取消长按定时器
             if (this.longPressTimer) {
                 clearTimeout(this.longPressTimer);
                 this.longPressTimer = null;
-                
-                // 短按
+            }
+            
+            // 如果是短按（非长按触发），则翻开格子
+            if (!this.longPressTriggered) {
                 const touch = e.changedTouches[0];
                 const {x, y} = this.getTouchCoords(touch);
                 if (x >= 0 && x < GRID_SIZE && y >= 0 && y < GRID_SIZE) {
-                    this.handleCellAction(x, y, false);
+                    this.revealCell(x, y);
                 }
             }
         });
@@ -90,9 +125,7 @@ class Minesweeper {
         });
     }
     
-    handleClick(e, isRightClick) {
-        if (this.gameOver) return;
-        
+    getMouseCoords(e) {
         const rect = this.canvas.getBoundingClientRect();
         const scaleX = this.canvas.width / rect.width;
         const scaleY = this.canvas.height / rect.height;
@@ -100,9 +133,7 @@ class Minesweeper {
         const x = Math.floor((e.clientX - rect.left) * scaleX / this.cellSize);
         const y = Math.floor((e.clientY - rect.top) * scaleY / this.cellSize);
         
-        if (x >= 0 && x < GRID_SIZE && y >= 0 && y < GRID_SIZE) {
-            this.handleCellAction(x, y, isRightClick);
-        }
+        return {x, y};
     }
     
     getTouchCoords(touch) {
@@ -116,18 +147,57 @@ class Minesweeper {
         return {x, y};
     }
     
-    handleCellAction(x, y, isFlag) {
-        if (isFlag) {
-            // 标记/取消标记
-            this.toggleFlag(x, y);
+    toggleFlag(x, y) {
+        if (this.revealed[y][x]) return;
+        
+        if (this.flagged[y][x]) {
+            this.flagged[y][x] = false;
+            this.flagCount--;
         } else {
-            // 揭开
-            this.revealCell(x, y);
+            this.flagged[y][x] = true;
+            this.flagCount++;
+        }
+        
+        this.updateUI();
+        this.draw();
+    }
+    
+    revealCell(x, y) {
+        if (this.revealed[y][x] || this.flagged[y][x]) return;
+        
+        this.revealed[y][x] = true;
+        
+        if (this.grid[y][x] === -1) {
+            this.gameOver = true;
+            this.revealAllMines();
+        } else if (this.grid[y][x] === 0) {
+            this.revealAdjacent(x, y);
+        }
+        
+        this.checkWin();
+        this.draw();
+    }
+    
+    revealAdjacent(x, y) {
+        for (let dy = -1; dy <= 1; dy++) {
+            for (let dx = -1; dx <= 1; dx++) {
+                const nx = x + dx;
+                const ny = y + dy;
+                
+                if (nx >= 0 && nx < GRID_SIZE && ny >= 0 && ny < GRID_SIZE) {
+                    if (!this.revealed[ny][nx] && !this.flagged[ny][nx]) {
+                        this.revealed[ny][nx] = true;
+                        
+                        if (this.grid[ny][nx] === 0) {
+                            this.revealAdjacent(nx, ny);
+                        }
+                    }
+                }
+            }
         }
     }
     
     initGrid() {
-        // 初始化网格
         for (let y = 0; y < GRID_SIZE; y++) {
             this.grid[y] = [];
             this.revealed[y] = [];
@@ -139,7 +209,6 @@ class Minesweeper {
             }
         }
         
-        // 放置地雷
         let minesPlaced = 0;
         while (minesPlaced < MINE_COUNT) {
             const x = Math.floor(Math.random() * GRID_SIZE);
@@ -151,146 +220,103 @@ class Minesweeper {
             }
         }
         
-        // 计算数字
         for (let y = 0; y < GRID_SIZE; y++) {
             for (let x = 0; x < GRID_SIZE; x++) {
-                if (this.grid[y][x] === -1) continue;
-                
-                let count = 0;
-                for (let dy = -1; dy <= 1; dy++) {
-                    for (let dx = -1; dx <= 1; dx++) {
-                        const nx = x + dx;
-                        const ny = y + dy;
-                        if (nx >= 0 && nx < GRID_SIZE && ny >= 0 && ny < GRID_SIZE) {
-                            if (this.grid[ny][nx] === -1) count++;
+                if (this.grid[y][x] !== -1) {
+                    let count = 0;
+                    for (let dy = -1; dy <= 1; dy++) {
+                        for (let dx = -1; dx <= 1; dx++) {
+                            const nx = x + dx;
+                            const ny = y + dy;
+                            if (nx >= 0 && nx < GRID_SIZE && ny >= 0 && ny < GRID_SIZE) {
+                                if (this.grid[ny][nx] === -1) {
+                                    count++;
+                                }
+                            }
                         }
                     }
-                }
-                this.grid[y][x] = count;
-            }
-        }
-        
-        this.updateFlagCount();
-    }
-    
-    revealCell(x, y) {
-        if (this.gameOver || this.revealed[y][x] || this.flagged[y][x]) return;
-        
-        this.revealed[y][x] = true;
-        
-        if (this.grid[y][x] === -1) {
-            // 踩到地雷
-            this.gameOver = true;
-            this.revealAll();
-            this.draw();
-            return;
-        }
-        
-        // 自动展开空白区域
-        if (this.grid[y][x] === 0) {
-            for (let dy = -1; dy <= 1; dy++) {
-                for (let dx = -1; dx <= 1; dx++) {
-                    const nx = x + dx;
-                    const ny = y + dy;
-                    if (nx >= 0 && nx < GRID_SIZE && ny >= 0 && ny < GRID_SIZE) {
-                        if (!this.revealed[ny][nx]) {
-                            this.revealCell(nx, ny);
-                        }
-                    }
+                    this.grid[y][x] = count;
                 }
             }
         }
         
-        this.draw();
-        this.checkWin();
+        this.updateUI();
     }
     
-    toggleFlag(x, y) {
-        if (this.gameOver || this.revealed[y][x]) return;
-        
-        this.flagged[y][x] = !this.flagged[y][x];
-        this.flagCount += this.flagged[y][x] ? 1 : -1;
-        this.updateFlagCount();
-        this.draw();
-    }
-    
-    revealAll() {
+    revealAllMines() {
         for (let y = 0; y < GRID_SIZE; y++) {
             for (let x = 0; x < GRID_SIZE; x++) {
-                this.revealed[y][x] = true;
+                if (this.grid[y][x] === -1) {
+                    this.revealed[y][x] = true;
+                }
             }
         }
     }
     
     checkWin() {
+        let revealedCount = 0;
         for (let y = 0; y < GRID_SIZE; y++) {
             for (let x = 0; x < GRID_SIZE; x++) {
-                if (this.grid[y][x] !== -1 && !this.revealed[y][x]) {
-                    return;
+                if (this.revealed[y][x]) {
+                    revealedCount++;
                 }
             }
         }
         
-        this.gameOver = true;
-        this.won = true;
-        this.draw();
+        if (revealedCount === GRID_SIZE * GRID_SIZE - MINE_COUNT) {
+            this.gameOver = true;
+            this.won = true;
+        }
     }
     
     draw() {
-        // 背景
-        this.ctx.fillStyle = '#1a1a2e';
+        this.ctx.fillStyle = '#34495E';
         this.ctx.fillRect(0, 0, this.canvas.width, this.canvas.height);
         
-        // 绘制格子
         for (let y = 0; y < GRID_SIZE; y++) {
             for (let x = 0; x < GRID_SIZE; x++) {
                 const px = x * this.cellSize;
                 const py = y * this.cellSize;
+                const margin = 1;
                 
                 if (this.revealed[y][x]) {
-                    // 已揭开
-                    this.ctx.fillStyle = '#e0e0e0';
-                    this.ctx.fillRect(px + 1, py + 1, this.cellSize - 2, this.cellSize - 2);
+                    this.ctx.fillStyle = '#ECF0F1';
+                    this.ctx.fillRect(px + margin, py + margin, 
+                                    this.cellSize - margin * 2, 
+                                    this.cellSize - margin * 2);
                     
                     if (this.grid[y][x] === -1) {
-                        // 地雷
-                        this.drawMine(px, py);
+                        this.ctx.fillStyle = '#E74C3C';
+                        this.ctx.beginPath();
+                        this.ctx.arc(px + this.cellSize / 2, py + this.cellSize / 2, 
+                                   this.cellSize * 0.3, 0, Math.PI * 2);
+                        this.ctx.fill();
                     } else if (this.grid[y][x] > 0) {
-                        // 数字
-                        this.drawNumber(px, py, this.grid[y][x]);
+                        this.ctx.fillStyle = this.getNumberColor(this.grid[y][x]);
+                        this.ctx.font = `bold ${this.cellSize * 0.5}px Arial`;
+                        this.ctx.textAlign = 'center';
+                        this.ctx.textBaseline = 'middle';
+                        this.ctx.fillText(this.grid[y][x], 
+                                        px + this.cellSize / 2, 
+                                        py + this.cellSize / 2);
                     }
                 } else {
-                    // 未揭开
-                    this.ctx.fillStyle = '#4a4a6a';
-                    this.ctx.fillRect(px + 1, py + 1, this.cellSize - 2, this.cellSize - 2);
-                    
-                    // 高光效果
-                    this.ctx.fillStyle = 'rgba(255, 255, 255, 0.1)';
-                    this.ctx.fillRect(px + 1, py + 1, this.cellSize - 2, this.cellSize / 3);
+                    this.ctx.fillStyle = '#7F8C8D';
+                    this.ctx.fillRect(px + margin, py + margin, 
+                                    this.cellSize - margin * 2, 
+                                    this.cellSize - margin * 2);
                     
                     if (this.flagged[y][x]) {
-                        this.drawFlag(px, py);
+                        this.ctx.fillStyle = '#E74C3C';
+                        this.ctx.font = `bold ${this.cellSize * 0.6}px Arial`;
+                        this.ctx.textAlign = 'center';
+                        this.ctx.textBaseline = 'middle';
+                        this.ctx.fillText('🚩', px + this.cellSize / 2, py + this.cellSize / 2);
                     }
                 }
             }
         }
         
-        // 网格线
-        this.ctx.strokeStyle = '#2a2a3e';
-        this.ctx.lineWidth = 1;
-        for (let i = 0; i <= GRID_SIZE; i++) {
-            this.ctx.beginPath();
-            this.ctx.moveTo(i * this.cellSize, 0);
-            this.ctx.lineTo(i * this.cellSize, this.canvas.height);
-            this.ctx.stroke();
-            
-            this.ctx.beginPath();
-            this.ctx.moveTo(0, i * this.cellSize);
-            this.ctx.lineTo(this.canvas.width, i * this.cellSize);
-            this.ctx.stroke();
-        }
-        
-        // 游戏结束提示
         if (this.gameOver) {
             this.ctx.fillStyle = 'rgba(0, 0, 0, 0.7)';
             this.ctx.fillRect(0, 0, this.canvas.width, this.canvas.height);
@@ -298,66 +324,26 @@ class Minesweeper {
             this.ctx.fillStyle = 'white';
             this.ctx.font = 'bold 24px Arial';
             this.ctx.textAlign = 'center';
+            this.ctx.textBaseline = 'middle';
             
             if (this.won) {
-                this.ctx.fillText('恭喜获胜！', this.canvas.width / 2, this.canvas.height / 2);
+                this.ctx.fillText('恭喜过关！', this.canvas.width / 2, this.canvas.height / 2);
             } else {
                 this.ctx.fillText('游戏失败！', this.canvas.width / 2, this.canvas.height / 2);
             }
         }
     }
     
-    drawMine(px, py) {
-        const centerX = px + this.cellSize / 2;
-        const centerY = py + this.cellSize / 2;
-        const radius = Math.max(3, this.cellSize * 0.25);
-        
-        this.ctx.fillStyle = '#000000';
-        this.ctx.beginPath();
-        this.ctx.arc(centerX, centerY, radius, 0, Math.PI * 2);
-        this.ctx.fill();
+    getNumberColor(num) {
+        const colors = ['', '#3498DB', '#27AE60', '#E74C3C', '#8E44AD', '#E67E22', '#16A085', '#C0392B', '#2C3E50'];
+        return colors[num] || '#000';
     }
     
-    drawFlag(px, py) {
-        const centerX = px + this.cellSize / 2;
-        const centerY = py + this.cellSize / 2;
-        const size = Math.max(4, this.cellSize * 0.4);
-        
-        this.ctx.fillStyle = '#F44336';
-        this.ctx.beginPath();
-        this.ctx.moveTo(centerX - size / 2, centerY - size / 3);
-        this.ctx.lineTo(centerX + size / 2, centerY);
-        this.ctx.lineTo(centerX - size / 2, centerY + size / 3);
-        this.ctx.closePath();
-        this.ctx.fill();
-        
-        // 旗杆
-        this.ctx.strokeStyle = '#000000';
-        this.ctx.lineWidth = Math.max(1, this.cellSize * 0.05);
-        this.ctx.beginPath();
-        this.ctx.moveTo(centerX - size / 2, centerY - size / 3);
-        this.ctx.lineTo(centerX - size / 2, centerY + size / 2);
-        this.ctx.stroke();
-    }
-    
-    drawNumber(px, py, num) {
-        const colors = ['', '#0000FF', '#008000', '#FF0000', '#000080', '#800000', '#008080', '#000000', '#808080'];
-        
-        this.ctx.fillStyle = colors[num];
-        this.ctx.font = `bold ${Math.max(10, this.cellSize * 0.5)}px Arial`;
-        this.ctx.textAlign = 'center';
-        this.ctx.textBaseline = 'middle';
-        this.ctx.fillText(num, px + this.cellSize / 2, py + this.cellSize / 2);
-    }
-    
-    updateFlagCount() {
-        document.getElementById('flags').textContent = `${this.flagCount} / ${MINE_COUNT}`;
+    updateUI() {
+        document.getElementById('flagCount').textContent = `${this.flagCount} / ${MINE_COUNT}`;
     }
     
     restart() {
-        this.grid = [];
-        this.revealed = [];
-        this.flagged = [];
         this.gameOver = false;
         this.won = false;
         this.flagCount = 0;
@@ -366,5 +352,4 @@ class Minesweeper {
     }
 }
 
-// 启动游戏
 new Minesweeper();

@@ -29,13 +29,13 @@ class Tetris {
         this.canvas = document.getElementById('gameCanvas');
         this.ctx = this.canvas.getContext('2d');
         
-        // 动态计算格子大小以适配移动端
-        const maxWidth = window.innerWidth - 40;
-        const maxHeight = window.innerHeight - 400;
+        // 动态计算格子大小以适配移动端，整体缩小30%
+        const maxWidth = (window.innerWidth - 40) * 0.7; // 缩小30%
+        const maxHeight = (window.innerHeight - 400) * 0.7; // 缩小30%
         this.cellSize = Math.min(
             Math.floor(maxWidth / COLS),
             Math.floor(maxHeight / ROWS),
-            30
+            25 // 最大25px（原来30px）
         );
         
         this.canvas.width = COLS * this.cellSize;
